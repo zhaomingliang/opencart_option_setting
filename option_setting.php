@@ -1,7 +1,7 @@
 <?php
 // Configuration
 if (is_file('config.php')) {
-	require_once('config.php');
+  require_once('config.php');
 }
 
 // Startup
@@ -23,8 +23,18 @@ $db = new DB(DB_DRIVER, DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, DB_P
 $registry->set('db', $db);
 
 
-//查询属性 插入
-$selectopt = "SELECT * FROM oc_option_value LEFT JOIN oc_option_value_description  ON oc_option_value.option_value_id=oc_option_value_description.option_value_id WHERE oc_option_value_description.language_id= 1";
+/*-----------------main---------------------*/
+
+$data['opttype']  = 22 ; //oc_option 表id
+
+
+//查询属性类型
+$selectopttype = "SELECT * from oc_option LEFT JOIN oc_option_description on oc_option.option_id = oc_option_description.option_id WHERE oc_option_description.language_id = 1";
+$opttype = $db->query($selectopttype);
+
+
+//查询属性 
+$selectopt = "SELECT * FROM oc_option_value LEFT JOIN oc_option_value_description  ON oc_option_value.option_value_id=oc_option_value_description.option_value_id WHERE oc_option_value_description.language_id= 1 and oc_option_value.option_id = '".$data['opttype']."'  order by oc_option_value.sort_order asc";
 $opt = $db->query($selectopt);
 
 
@@ -33,16 +43,46 @@ $selectcat = "select * from oc_category LEFT JOIN oc_category_description on oc_
 $cat = $db->query($selectcat);
 
 if($_POST){
+
+ // $data['opttype'] = (int) $_POST['opttype'];
+  
+  if($data['opttype'] == ''){
+    echo ' <script>alert("分类类别不能为空!"); window.history.back(-1); </script>';
+  }
   $data['cat']  = $_POST['cat'];
+  $data['opt']  = $_POST['opt'];
+  $opt_price = 0 ; //属性价格
+  $optid = $data['opttype'];
+
   $data['cat'] = explode(",", $data['cat']);
   $data['opt'] = explode(",", $data['opt']);
 
 
   foreach ($data['cat'] as $key => $value) {
-      foreach ($data['opt'] as $k => $v) {
+      //查询该分类下的所有的产品
+      $products = $db->query("SELECT * FROM oc_product_to_category WHERE category_id =".$value." GROUP BY category_id");
+      foreach ($products->rows as  $product) {
+
+      $inser_product_option = $db->query("INSERT INTO `oc_product_option` (`product_id`, `option_id`, `required`) VALUES ('".$product['product_id']."', '".$data['opttype']."', '1')");   
+      $pro_optid = $db->getLastId();
+
+      if($inser_product_option){
+        foreach ($data['opt'] as $k => $v) {
            
+              $product_id = $product['product_id'];
+              $sql = "INSERT INTO `oc_product_option_value` (`product_option_value_id`, `product_option_id`, `product_id`, `option_id`, `option_value_id`, `quantity`, `subtract`, `price`, `price_prefix`, `points`, `points_prefix`, `weight`, `weight_prefix`) VALUES ('', '$pro_optid', '$product_id', '$optid', '$v', '999', '1', '$opt_price', '+', '0', '+', '0', '+')";
+             // echo $sql."<br>";
+              $product_option_value = $db->query($sql);
+              if($product_option_value){
+                  echo $product['product_id']."-ok<br>";
+              }
+           
+        }
+      }
+
       }
   }
+  exit();
 }
 ?>
 
@@ -51,7 +91,7 @@ if($_POST){
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>opt</title>
 <link href="//cdn.bootcss.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css" rel="stylesheet">
-<script src="//cdn.bootcss.com/vue/1.0.24/vue.common.js"></script>
+<script src="/vue.min.js"></script>
 <script>
 new Vue({
   el: '#cat',
@@ -62,7 +102,7 @@ new Vue({
 </script>
 <style>
 .select{
-	min-height:300px !important;
+  min-height:300px !important;
 }
 </style>
 </head>
@@ -99,7 +139,7 @@ new Vue({
         </script>
       </div>
       <div class="col-md-5 column">
-        <h2>属性</h2>
+        <h2 >属性</h2>
         <hr>
         <div id="opt" class="demo">
           <select v-model="selected" multiple class="form-control select">
