@@ -60,7 +60,7 @@ if($_POST){
 
   foreach ($data['cat'] as $key => $value) {
       //查询该分类下的所有的产品
-      $products = $db->query("SELECT * FROM oc_product_to_category WHERE category_id =".$value." GROUP BY category_id");
+      $products = $db->query("SELECT distinct product_id,category_id FROM oc_product_to_category WHERE category_id =".$value);
       foreach ($products->rows as  $product) {
 
       $inser_product_option = $db->query("INSERT INTO `oc_product_option` (`product_id`, `option_id`, `required`) VALUES ('".$product['product_id']."', '".$data['opttype']."', '1')");   
